@@ -309,6 +309,65 @@ test("the canvas writes its viewport into localStorage under the session id", as
 	assert.equal(typeof parsed.y, "number")
 })
 
+test("dragging a card persists the layout for that session", async () => {
+	const { exports, storage } = await loadClientBundle()
+	const ctx = createContext()
+	exports.apply(ctx)
+	const { registration, component } = ctx.registrations[0]
+
+	const props = Object.assign({}, registration.inject("session-1"), {
+		sessionId: "session-1",
+		useChat: (selector) => selector(createChatSnapshot())
+	})
+	const tree = component(props)
+	const stage = treeFind(tree, (element) => element.props?.className === "dshc-stage")[0]
+	assert.ok(stage, "the stage renders")
+
+	// A pointerdown whose target reports the first card, then a move, then up.
+	const cardTarget = { dataset: { dshcKey: "n1" } }
+	const at = (x, y) => ({
+		button: 0,
+		pointerId: 1,
+		clientX: x,
+		clientY: y,
+		target: { closest: (selector) => (selector === "[data-dshc-key]" ? cardTarget : null) }
+	})
+
+	stage.props.onPointerDown(at(100, 100))
+	stage.props.onPointerMove(at(160, 130))
+	stage.props.onPointerUp(at(160, 130))
+
+	const raw = storage.map.get("dsh-canvas:layout:session-1")
+	assert.ok(raw, "the layout is persisted once the drag ends")
+	const layout = JSON.parse(raw)
+	assert.ok(layout.n1, "the dragged card is in the payload")
+	// n1 is laid out at the turn-1 column, which the drag offset then moves by
+	// the pointer delta divided by the current zoom.
+	assert.equal(layout.n1.x, 316 + 60 / 0.85)
+	assert.equal(layout.n1.y, 0 + 30 / 0.85)
+})
+
+test("dragging empty space pans instead of moving a card", async () => {
+	const { exports, storage } = await loadClientBundle()
+	const ctx = createContext()
+	exports.apply(ctx)
+	const { registration, component } = ctx.registrations[0]
+
+	const props = Object.assign({}, registration.inject("session-1"), {
+		sessionId: "session-1",
+		useChat: (selector) => selector(createChatSnapshot())
+	})
+	const tree = component(props)
+	const stage = treeFind(tree, (element) => element.props?.className === "dshc-stage")[0]
+
+	const empty = { button: 0, pointerId: 1, clientX: 10, clientY: 10, target: { closest: () => null } }
+	stage.props.onPointerDown(empty)
+	stage.props.onPointerMove(Object.assign({}, empty, { clientX: 60, clientY: 40 }))
+	stage.props.onPointerUp(empty)
+
+	assert.equal(storage.map.has("dsh-canvas:layout:session-1"), false, "panning writes no layout")
+})
+
 test("unloading the plugin removes the stylesheet it installed", async () => {
 	const { exports, document } = await loadClientBundle()
 	const ctx = createContext()
