@@ -146,21 +146,37 @@ you get back is a repository anyone can clone, read, change and test.
 ## Development
 
 ```sh
-node --test test/*.test.mjs     # contract tests
+node --test test/*.test.mjs     # contract tests plus the real-DOM interaction tests
 node scripts/smoke.mjs          # end to end: load, mount, render, export, compare the example
 node scripts/smoke.mjs --write  # regenerate examples/sample-canvas.json after a change
 ```
 
-The tests need no browser and no installs. `test/harness.mjs` runs the bundle in a
-`node:vm` context that supplies `window`, `document` and `navigator`, then walks the
-real render path with a stub React — function components are expanded and
-`useEffect` runs once at mount. So "what did it register", "how many cards did it
-render" and "does unloading leave a stylesheet behind" are asserted by actually
-running the code, not by reading it.
+Two suites, with different jobs.
 
-`test/sanitize.test.mjs` is the publication gate: it scans every text file in the
-tree and fails on a personal name, an absolute home path, a private domain, a
-server address, or a credential-shaped string.
+The **contract tests** (`test/harness.mjs`) need no browser and no installs. They run the
+bundle in a `node:vm` context that supplies `window`, `document` and `navigator`, then walk
+the real render path with a stub React — function components are expanded and `useEffect`
+runs once at mount. So "what did it register", "how many cards did it render" and "does
+unloading leave a stylesheet behind" are asserted by actually running the code.
+
+The **interaction tests** (`test/interactive.test.mjs`) run on real React 18, real
+`react-dom` and jsdom, dispatching real events: click a card, click `＋`, export, drag a
+card, drag empty space, wheel, search, switch language, Escape. They prove what a stub
+cannot — that a click really moves state, that a drag really persists, that the wheel
+really clamps.
+
+React, react-dom and jsdom are not dependencies of this repository — installing them would
+mean shipping a second React next to the shell's. They are taken from a DSH installation
+already on the machine, so this suite runs locally and skips cleanly in CI. Point
+`DSH_APP_ROOT` at another install, or set `DSH_CANVAS_SKIP_INTERACTIVE=1` to force the skip.
+
+It paid for itself on its first run by finding a bug a stub React cannot find: a
+`useSyncExternalStore` snapshot that is a fresh object on every read re-renders forever. The
+plugin now hands React the bare revision number, which is stable by value.
+
+`test/sanitize.test.mjs` is the publication gate: it scans every text file in the tree and
+fails on a personal name, an absolute home path, a private domain, a server address, or a
+credential-shaped string.
 
 ## Layout
 

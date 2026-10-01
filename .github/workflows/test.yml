@@ -14,7 +14,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-      - name: Contract tests
+      - name: Contract and interaction tests
+        # The interaction suite borrows React and jsdom from a DSH installation
+        # and self-skips on a runner that has none.
         run: node --test test/*.test.mjs
       - name: End-to-end smoke
         run: node scripts/smoke.mjs

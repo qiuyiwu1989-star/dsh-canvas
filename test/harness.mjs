@@ -218,9 +218,15 @@ export async function loadClientBundle(options = {}) {
 
 /** A fake locale service shaped like the shell's `ctx.locale`. */
 export function createLocale(options = {}) {
-	const active = options.active ?? "zh"
+	let current = options.active ?? "zh"
 	const registrations = []
 	const listeners = new Set()
+	// The real service caches its snapshot, and `useSyncExternalStore` requires
+	// that: a fresh object on every read is an infinite render loop. `churn`
+	// reproduces the failure on purpose, for the test that pins the plugin's
+	// tolerance of a snapshot whose identity is not reused.
+	let revision = 1
+	let cached = { active: current, locales: [], revision }
 	return {
 		registrations,
 		register(namespace, id, dict) {
@@ -229,7 +235,7 @@ export function createLocale(options = {}) {
 		},
 		bind(namespace) {
 			return (key, params) => {
-				const entry = registrations.find((item) => item.namespace === namespace && item.id === active)
+				const entry = registrations.find((item) => item.namespace === namespace && item.id === current)
 				const template = entry?.dict?.[key]
 				if (template === undefined) return key
 				if (params === undefined) return template
@@ -239,11 +245,19 @@ export function createLocale(options = {}) {
 			}
 		},
 		getSnapshot() {
-			return { active, locales: [], revision: 1 }
+			if (options.churn === true) return { active: current, locales: [], revision }
+			return cached
 		},
 		subscribe(listener) {
 			listeners.add(listener)
 			return () => listeners.delete(listener)
+		},
+		/** Test helper: switch language the way the real service would. */
+		setActive(next) {
+			current = next
+			revision += 1
+			cached = { active: current, locales: [], revision }
+			for (const listener of listeners) listener()
 		}
 	}
 }

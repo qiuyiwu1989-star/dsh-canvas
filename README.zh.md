@@ -129,15 +129,28 @@ DSH 的客户端 bundle 不是 ES module,而是 `window.__ModuleLoader__.load({ 
 ## 开发
 
 ```sh
-node --test test/*.test.mjs   # 契约测试
+node --test test/*.test.mjs   # 契约测试 + 真实 DOM 交互测试
 node scripts/smoke.mjs        # 端到端:加载 bundle、挂载、渲染、导出、比对示例
 node scripts/smoke.mjs --write  # 改了示例后重新生成 examples/sample-canvas.json
 ```
 
-测试不需要浏览器,也不需要装任何东西。`test/harness.mjs` 用一个 `node:vm` 上下文提供
-`window` / `document` / `navigator`,用一套桩 React 按真实顺序走一遍渲染路径——
+两套测试,分工不同。
+
+**契约测试**(`test/harness.mjs`)不需要浏览器也不需要装任何东西:它用一个 `node:vm`
+上下文提供 `window` / `document` / `navigator`,用一套桩 React 按真实顺序走一遍渲染路径——
 函数组件会被展开,`useEffect` 在挂载时执行一次。所以「注册了什么」「渲染出几张卡」
 「卸载会不会留下样式」都是被真跑出来断言的,不是靠读代码。
+
+**交互测试**(`test/interactive.test.mjs`)跑在真 React 18 + 真 `react-dom` + jsdom 上,
+派发真事件:点卡片、点 `＋`、导出、拖卡片、拖空白、滚轮、搜索、切语言、Esc。它证明了桩
+React 证明不了的事——点击真的会改状态,拖拽真的会落盘,滚轮真的会被 clamp 住。
+
+React / react-dom / jsdom 不是本仓库的依赖(装了就等于在外壳的 React 旁边再塞一个),它们
+从机器上已有的 DSH 安装里取。所以这一套在本机跑、在 CI 上干净跳过;`DSH_APP_ROOT` 可以
+指到别的安装位置,`DSH_CANVAS_SKIP_INTERACTIVE=1` 可以强制跳过。
+
+它第一次跑起来就抓到一个桩 React 永远抓不到的 bug:`useSyncExternalStore` 的 snapshot
+如果每次返回新对象就会无限重渲染。现在插件只把 revision 这个数字交给它,按值稳定。
 
 `test/sanitize.test.mjs` 是发布闸门:它扫全树的文本文件,撞到人名、绝对家目录路径、
 私有域名、服务器地址、凭据形状的串就失败。

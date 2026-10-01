@@ -20,11 +20,19 @@ node --test test/*.test.mjs
 node scripts/smoke.mjs
 ```
 
-The harness in `test/harness.mjs` runs the bundle in a `node:vm` context with a stub
-`window`/`document` and a stub React that expands function components and runs
-`useEffect` once at mount. That means the render path, the registration, and the
-teardown path are all testable without a browser. Prefer asserting against the
-rendered tree (`treeText`, `treeFind`) over asserting against internals.
+There are two layers, and a change belongs in whichever one can actually catch its
+regression.
+
+`test/harness.mjs` runs the bundle in a `node:vm` context with a stub `window`/`document`
+and a stub React that expands function components and runs `useEffect` once at mount. Use
+it for the registration, the tree shape, the data projection, and teardown — it is fast and
+needs nothing installed.
+
+`test/interactive.test.mjs` runs the same bundle on real React, real `react-dom` and jsdom
+with real events. Use it for anything about *interaction*: state that a click must move,
+a ref a drag must write, a clamp a wheel must respect, re-render behavior. It borrows React
+and jsdom from a DSH installation on the machine and skips when there is none, so a
+regression it covers can reach CI undetected — run it locally before pushing.
 
 If you change the sample canvas, regenerate the fixture:
 
