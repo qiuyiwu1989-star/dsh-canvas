@@ -1,0 +1,63 @@
+{
+	"plugin": "dsh-canvas",
+	"version": 1,
+	"fictional": true,
+	"note": "Regenerate with: node scripts/smoke.mjs --write",
+	"cards": [
+		{
+			"key": "sample:1",
+			"kind": "user",
+			"role": "intent",
+			"turn": 1,
+			"step": 0,
+			"seq": 1,
+			"title": "把社区读书会做成一个报名页",
+			"text": "我们社区每月有一次读书会,现在靠群里接龙。想做一个简单报名页,能看还剩几个名额,报名后能收到提醒。这次只做报名,不做支付。",
+			"sample": true
+		},
+		{
+			"key": "sample:2",
+			"kind": "assistant-step",
+			"role": "ai",
+			"turn": 1,
+			"step": 1,
+			"seq": 2,
+			"title": "先定人数上限放在哪里",
+			"text": "建议先把「名额」定成一个明确数字,而不是一个状态:上限写死在页面配置里,已报名数从报名记录里数出来。这样页面任何时候都能自己算出剩余名额,不需要一个后台去维护它。",
+			"sample": true
+		},
+		{
+			"key": "sample:3",
+			"kind": "steering",
+			"role": "choice",
+			"turn": 1,
+			"step": 2,
+			"seq": 3,
+			"title": "提醒改成活动前一天",
+			"text": "不要报名后立刻提醒。改成活动前一天晚上提醒一次,当天早上再提醒一次。",
+			"sample": true
+		},
+		{
+			"key": "sample:4",
+			"kind": "tool-call",
+			"role": "action",
+			"turn": 1,
+			"step": 3,
+			"seq": 4,
+			"title": "write",
+			"text": "{\n  \"file_path\": \"…/signup/index.html\",\n  \"note\": \"single page, no build step\"\n}",
+			"sample": true
+		},
+		{
+			"key": "sample:5",
+			"kind": "assistant-step",
+			"role": "result",
+			"turn": 1,
+			"step": 4,
+			"seq": 5,
+			"title": "一个页面 + 一份名单",
+			"text": "交付是一个零依赖的报名页,加一份可以直接打开的名单文件。剩余名额由页面上限减去名单行数得出。提醒改为活动前一天与当天早上各一次。没有支付、没有账号、没有后台。",
+			"sample": true
+		}
+	]
+}
